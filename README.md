@@ -1,108 +1,79 @@
 # WhatsApp WAHA MCP Server
 
-A comprehensive Model Context Protocol (MCP) server for [WAHA (WhatsApp HTTP API)](https://waha.devlike.pro), enabling AI assistants like Claude to interact with WhatsApp programmatically.
+Minimal Model Context Protocol (MCP) server for [WAHA (WhatsApp HTTP API)](https://waha.devlike.pro).
+
+**23 tools • 300 lines • 98% test coverage • No SDK dependencies**
 
 ## Features
 
-This MCP server provides complete access to WAHA features:
+**23 tools** organized in 6 categories:
 
-### Session Management
-- ✅ List all sessions
-- ✅ Start/stop sessions
-- ✅ Get session status
-- ✅ Restart sessions
-- ✅ Logout from sessions
+### Sessions (4 tools)
+- `list_sessions` - List all sessions
+- `start_session` - Start new session
+- `stop_session` - Stop session
+- `get_session` - Get session status
 
-### Messaging
-- ✅ Send text messages
-- ✅ Send images, videos, documents, audio
-- ✅ Send location
-- ✅ Send contact cards
-- ✅ Send polls
-- ✅ React to messages with emojis
+### Messaging (5 tools)
+- `send_text` - Send text messages
+- `send_image` - Send images
+- `send_file` - Send files/documents
+- `send_location` - Send location
+- `react_to_message` - React with emoji
 
-### Chats
-- ✅ List all chats
-- ✅ Get chat messages
-- ✅ Delete chats
-- ✅ Clear chat messages
-- ✅ Archive/unarchive chats
+### Chats (4 tools)
+- `list_chats` - List all chats
+- `get_messages` - Get chat messages
+- `delete_chat` - Delete chat
+- `archive_chat` - Archive chat
 
-### Groups
-- ✅ Create groups
-- ✅ List groups
-- ✅ Get group info
-- ✅ Add/remove participants
-- ✅ Leave groups
-- ✅ Update group name and description
+### Groups (5 tools)
+- `create_group` - Create group
+- `list_groups` - List groups
+- `get_group` - Get group info
+- `add_participants` - Add members
+- `remove_participants` - Remove members
 
-### Contacts
-- ✅ List contacts
-- ✅ Get contact info
-- ✅ Check if number exists
-- ✅ Block/unblock contacts
+### Contacts (3 tools)
+- `list_contacts` - List contacts
+- `get_contact` - Get contact info
+- `check_number` - Check if number exists
 
-### Presence
-- ✅ Set online/offline status
-- ✅ Start/stop typing indicators
-
-### Status/Stories
-- ✅ Send text status
-- ✅ Send image status
-
-### Labels (WhatsApp Business)
-- ✅ List labels
-- ✅ Create labels
-- ✅ Assign labels to chats
+### Presence (2 tools)
+- `set_presence` - Set online/offline
+- `set_typing` - Set typing indicator
 
 ## Installation
 
-### Prerequisites
-
-- Python 3.10 or higher
+**Prerequisites:**
+- Python 3.10+
 - [uv](https://github.com/astral-sh/uv) package manager
-- Access to a WAHA instance (e.g., waha.devlike.pro)
+- WAHA instance (e.g., waha.devlike.pro)
 
-### Quick Start
-
-Install and run locally:
+**Install:**
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/whatsapp-waha-mcp.git
+git clone https://github.com/FarisHijazi/whatsapp-waha-mcp.git
 cd whatsapp-waha-mcp
-
-# Install with uv
+uv venv && source .venv/bin/activate
 uv pip install -e .
-
-# Run the server
-whatsapp-waha-mcp
 ```
 
 ## Configuration
 
-Set environment variables to configure the server:
+Create `.env` file:
 
 ```bash
-# WAHA API base URL (default: https://waha.devlike.pro)
-export WAHA_BASE_URL="https://waha.devlike.pro"
-
-# WAHA API key (if required)
-export WAHA_API_KEY="your-api-key-here"
-```
-
-Or create a `.env` file:
-
-```env
 WAHA_BASE_URL=https://waha.devlike.pro
 WAHA_API_KEY=your-api-key-here
 ```
 
 ## Usage with Claude Desktop
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+Add to `claude_desktop_config.json`:
 
-For local development:
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -126,119 +97,82 @@ For local development:
 
 ## Example Usage
 
-Once configured with Claude Desktop, you can ask Claude to:
+Ask Claude:
 
 ```
 "List all my WhatsApp sessions"
-"Start a new WhatsApp session called 'my-phone'"
-"Send a text message to +1234567890 saying 'Hello from Claude!'"
-"Create a group called 'Team' with participants +1234567890, +0987654321"
+"Start a new session called 'my-phone'"
+"Send 'Hello!' to +1234567890"
+"Create a group 'Team' with +1111111111, +2222222222"
 "List all my chats"
-"Get messages from chat 1234567890@c.us"
 ```
-
-## Available Tools
-
-The server exposes 50+ tools for comprehensive WhatsApp automation. See the full list in the [source code](src/whatsapp_waha_mcp/server.py).
-
-### Session Tools
-- `list_sessions()` - List all sessions
-- `start_session(name, config?)` - Start a new session
-- `stop_session(name)` - Stop a session
-- `get_session_status(name)` - Get session status
-- `restart_session(name)` - Restart a session
-- `logout_session(name)` - Logout from session
-
-### Messaging Tools
-- `send_text_message(session, chat_id, text, reply_to?)` - Send text
-- `send_image(session, chat_id, url, caption?)` - Send image
-- `send_video(session, chat_id, url, caption?)` - Send video
-- `send_document(session, chat_id, url, filename?, caption?)` - Send document
-- `send_audio(session, chat_id, url)` - Send audio
-- `send_location(session, chat_id, latitude, longitude, title?)` - Send location
-- `send_contact(session, chat_id, contact_id)` - Send contact
-- `send_poll(session, chat_id, title, options, multiple_answers?)` - Send poll
-- `react_to_message(session, chat_id, message_id, reaction)` - React with emoji
-
-### Chat Tools
-- `list_chats(session, limit?, offset?)` - List chats
-- `get_chat_messages(session, chat_id, limit?)` - Get messages
-- `delete_chat(session, chat_id)` - Delete chat
-- `clear_chat_messages(session, chat_id)` - Clear messages
-- `archive_chat(session, chat_id)` - Archive chat
-- `unarchive_chat(session, chat_id)` - Unarchive chat
-
-### Group Tools
-- `create_group(session, name, participants)` - Create group
-- `list_groups(session)` - List groups
-- `get_group_info(session, group_id)` - Get group info
-- `add_group_participants(session, group_id, participants)` - Add members
-- `remove_group_participants(session, group_id, participants)` - Remove members
-- `leave_group(session, group_id)` - Leave group
-- `update_group_subject(session, group_id, subject)` - Update name
-- `update_group_description(session, group_id, description)` - Update description
-
-And many more!
 
 ## Development
 
+**Install dev dependencies:**
 ```bash
-# Install dependencies
 uv pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Format code
-black src/
-
-# Lint
-ruff check src/
 ```
 
-## Architecture
+**Run tests:**
+```bash
+pytest                    # Run all tests
+pytest -v                 # Verbose mode
+pytest --cov              # With coverage report
+```
 
-This server uses:
-- **FastMCP**: Simplified MCP server framework for Python
-- **httpx**: Async HTTP client for WAHA API calls
-- **STDIO Transport**: Communicates with MCP hosts via standard input/output
+All 34 tests use mocking - no external API calls needed!
 
-## Troubleshooting
+## Project Structure
 
-### Server not starting
-- Ensure Python 3.10+ is installed
-- Check that `uv` is properly installed
-- Verify WAHA_BASE_URL is accessible
+```
+whatsapp-waha-mcp/
+├── src/whatsapp_waha_mcp/
+│   ├── __init__.py          # Package init
+│   └── server.py            # MCP server (300 lines)
+├── tests/
+│   ├── __init__.py
+│   └── test_server.py       # Unit tests (34 tests, 98% coverage)
+├── pyproject.toml           # Project config
+├── pytest.ini               # Test config
+└── README.md                # This file
+```
 
-### Authentication errors
-- Verify your WAHA_API_KEY is correct
-- Check if your WAHA instance requires authentication
+## Technical Details
 
-### Connection issues
-- Ensure WAHA instance is running and accessible
-- Check network connectivity
-- Verify SSL certificates if using HTTPS
+- **Framework:** FastMCP (lightweight MCP framework)
+- **HTTP Client:** httpx (async HTTP library)
+- **Transport:** STDIO (standard MCP communication)
+- **Protocol:** JSON-RPC 2.0
+- **Dependencies:** `mcp`, `httpx`, `python-dotenv`
+- **Dev Dependencies:** `pytest`, `pytest-asyncio`, `pytest-mock`, `pytest-cov`
+- **Test Coverage:** 98% (34 passing tests)
 
-## Contributing
+## Why No SDK?
 
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+WAHA is a simple REST API. Using httpx directly is:
+- ✅ **Simpler** - No extra dependencies
+- ✅ **More transparent** - You see exactly what's called
+- ✅ **Easier to maintain** - One less layer to debug
+- ✅ **Smaller codebase** - 300 vs 700+ lines
+
+The entire HTTP layer is just one clean function:
+
+```python
+async def api_call(method: str, path: str, **kwargs) -> dict[str, Any]:
+    """Make WAHA API request."""
+    headers = {"X-API-Key": API_KEY} if API_KEY else {}
+    response = await client.request(method, f"{BASE_URL}/api{path}", headers=headers, **kwargs)
+    response.raise_for_status()
+    return response.json() if response.status_code != 204 else {"success": True}
+```
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE)
 
 ## Links
 
 - [WAHA Documentation](https://waha.devlike.pro/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [FastMCP](https://github.com/jlowin/fastmcp)
-
-## Support
-
-For issues and questions:
-- WAHA: https://github.com/devlikeapro/waha
-- This MCP Server: https://github.com/yourusername/whatsapp-waha-mcp/issues
