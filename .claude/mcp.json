@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "whatsapp-waha": {
+      "command": "uvx",
+      "args": ["whatsapp-waha-mcp"],
+      "env": {
+        "WAHA_BASE_URL": "https://waha.fhijazi.com/",
+        "WAHA_API_KEY": "sk-bekfast"
+      }
+    }
+  }
+}

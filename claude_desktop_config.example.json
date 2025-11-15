@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "whatsapp-waha": {
+      "command": "uvx",
+      "args": ["git+https://github.com/yourusername/whatsapp-waha-mcp.git"],
+      "env": {
+        "WAHA_BASE_URL": "http://localhost:3000",
+        "WAHA_API_KEY": ""
+      }
+    }
+  }
+}
