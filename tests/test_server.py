@@ -163,7 +163,10 @@ class TestMessagingTools:
         result = await server.send_text("default", "1234567890@c.us", "Hello")
 
         call_args = mock_client.request.call_args
+        # Using the new WAHA API format with /api/sendText
+        assert "/sendText" in call_args[0][1]
         assert call_args[1]["json"] == {
+            "session": "default",
             "chatId": "1234567890@c.us",
             "text": "Hello"
         }
@@ -189,7 +192,9 @@ class TestMessagingTools:
         )
 
         call_args = mock_client.request.call_args
+        assert "/sendImage" in call_args[0][1]
         json_data = call_args[1]["json"]
+        assert json_data["session"] == "default"
         assert json_data["file"]["url"] == "https://example.com/image.jpg"
         assert json_data["caption"] == "Caption"
 
@@ -206,7 +211,9 @@ class TestMessagingTools:
         )
 
         call_args = mock_client.request.call_args
+        assert "/sendFile" in call_args[0][1]
         json_data = call_args[1]["json"]
+        assert json_data["session"] == "default"
         assert json_data["filename"] == "document.pdf"
         assert json_data["caption"] == "My document"
 
@@ -223,7 +230,9 @@ class TestMessagingTools:
         )
 
         call_args = mock_client.request.call_args
+        assert "/sendLocation" in call_args[0][1]
         json_data = call_args[1]["json"]
+        assert json_data["session"] == "default"
         assert json_data["latitude"] == 37.7749
         assert json_data["longitude"] == -122.4194
         assert json_data["title"] == "San Francisco"
@@ -236,13 +245,26 @@ class TestMessagingTools:
             "default",
             "1234567890@c.us",
             "msg123",
-            "👍"
+            "like"
         )
 
         call_args = mock_client.request.call_args
         json_data = call_args[1]["json"]
+        assert json_data["session"] == "default"
         assert json_data["messageId"] == "msg123"
-        assert json_data["reaction"] == "👍"
+        assert json_data["reaction"] == "like"
+
+    async def test_send_seen(self, mock_client, mock_response):
+        """Test send_seen tool"""
+        mock_client.request = AsyncMock(return_value=mock_response)
+
+        await server.send_seen("default", "1234567890@c.us")
+
+        call_args = mock_client.request.call_args
+        assert "/sendSeen" in call_args[0][1]
+        json_data = call_args[1]["json"]
+        assert json_data["session"] == "default"
+        assert json_data["chatId"] == "1234567890@c.us"
 
 
 class TestChatTools:
@@ -403,7 +425,9 @@ class TestContactTools:
         result = await server.check_number("default", "1234567890")
 
         call_args = mock_client.request.call_args
+        assert "/checkNumberStatus" in call_args[0][1]
         assert call_args[1]["json"]["phone"] == "1234567890"
+        assert call_args[1]["json"]["session"] == "default"
 
 
 class TestPresenceTools:

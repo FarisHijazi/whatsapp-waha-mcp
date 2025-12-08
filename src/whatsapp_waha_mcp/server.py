@@ -3,6 +3,7 @@
 
 import os
 import logging
+import ssl
 from typing import Any, Optional
 from mcp.server.fastmcp import FastMCP
 import httpx
@@ -17,14 +18,19 @@ logger = logging.getLogger("waha-mcp")
 
 # Initialize
 mcp = FastMCP("WhatsApp WAHA")
-BASE_URL = os.getenv("WAHA_BASE_URL", "https://waha.devlike.pro")
+BASE_URL = os.getenv("WAHA_BASE_URL", "https://waha.devlike.pro").rstrip("/")
 API_KEY = os.getenv("WAHA_API_KEY", "")
-client = httpx.AsyncClient(timeout=30.0)
+VERIFY_SSL = os.getenv("WAHA_VERIFY_SSL", "true").lower() != "false"
+
+# Create client with optional SSL verification
+client = httpx.AsyncClient(timeout=30.0, verify=VERIFY_SSL)
 
 
 async def api_call(method: str, path: str, **kwargs) -> dict[str, Any]:
     """Make WAHA API request."""
     headers = {"X-API-Key": API_KEY} if API_KEY else {}
+    if "json" in kwargs:
+        headers["Content-Type"] = "application/json"
     url = f"{BASE_URL}/api{path}"
 
     try:
@@ -75,7 +81,7 @@ async def get_session(name: str) -> str:
 
 
 # ============================================================================
-# MESSAGING
+# MESSAGING (using WAHA's direct endpoint format)
 # ============================================================================
 
 @mcp.tool()
@@ -88,15 +94,15 @@ async def send_text(
     """Send a text message.
 
     Args:
-        session: Session name
+        session: Session name (e.g., 'default')
         chat_id: Chat ID (e.g., '1234567890@c.us' for contact, '1234567890@g.us' for group)
         text: Message text
         reply_to: Optional message ID to reply to
     """
-    data = {"chatId": chat_id, "text": text}
+    data = {"session": session, "chatId": chat_id, "text": text}
     if reply_to:
         data["reply_to"] = reply_to
-    return str(await api_call("POST", f"/sessions/{session}/messages/text", json=data))
+    return str(await api_call("POST", "/sendText", json=data))
 
 
 @mcp.tool()
@@ -106,11 +112,18 @@ async def send_image(
     url: str,
     caption: Optional[str] = None
 ) -> str:
-    """Send an image."""
-    data = {"chatId": chat_id, "file": {"url": url}}
+    """Send an image.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID
+        url: Image URL
+        caption: Optional caption
+    """
+    data = {"session": session, "chatId": chat_id, "file": {"url": url}}
     if caption:
         data["caption"] = caption
-    return str(await api_call("POST", f"/sessions/{session}/messages/image", json=data))
+    return str(await api_call("POST", "/sendImage", json=data))
 
 
 @mcp.tool()
@@ -121,13 +134,21 @@ async def send_file(
     filename: Optional[str] = None,
     caption: Optional[str] = None
 ) -> str:
-    """Send a file/document."""
-    data = {"chatId": chat_id, "file": {"url": url}}
+    """Send a file/document.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID
+        url: File URL
+        filename: Optional filename
+        caption: Optional caption
+    """
+    data = {"session": session, "chatId": chat_id, "file": {"url": url}}
     if filename:
         data["filename"] = filename
     if caption:
         data["caption"] = caption
-    return str(await api_call("POST", f"/sessions/{session}/messages/document", json=data))
+    return str(await api_call("POST", "/sendFile", json=data))
 
 
 @mcp.tool()
@@ -138,11 +159,19 @@ async def send_location(
     longitude: float,
     title: Optional[str] = None
 ) -> str:
-    """Send a location."""
-    data = {"chatId": chat_id, "latitude": latitude, "longitude": longitude}
+    """Send a location.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+        title: Optional location title
+    """
+    data = {"session": session, "chatId": chat_id, "latitude": latitude, "longitude": longitude}
     if title:
         data["title"] = title
-    return str(await api_call("POST", f"/sessions/{session}/messages/location", json=data))
+    return str(await api_call("POST", "/sendLocation", json=data))
 
 
 @mcp.tool()
@@ -152,9 +181,28 @@ async def react_to_message(
     message_id: str,
     emoji: str
 ) -> str:
-    """React to a message with an emoji."""
-    data = {"chatId": chat_id, "messageId": message_id, "reaction": emoji}
-    return str(await api_call("POST", f"/sessions/{session}/messages/reaction", json=data))
+    """React to a message with an emoji.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID
+        message_id: Message ID to react to
+        emoji: Emoji to react with
+    """
+    data = {"session": session, "messageId": message_id, "reaction": emoji}
+    return str(await api_call("PUT", f"/{session}/chats/{chat_id}/messages/{message_id}/reaction", json=data))
+
+
+@mcp.tool()
+async def send_seen(session: str, chat_id: str) -> str:
+    """Mark messages in a chat as seen/read.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID to mark as seen
+    """
+    data = {"session": session, "chatId": chat_id}
+    return str(await api_call("POST", "/sendSeen", json=data))
 
 
 # ============================================================================
@@ -163,8 +211,13 @@ async def react_to_message(
 
 @mcp.tool()
 async def list_chats(session: str, limit: int = 100) -> str:
-    """List all chats."""
-    return str(await api_call("GET", f"/sessions/{session}/chats", params={"limit": limit}))
+    """List all chats.
+
+    Args:
+        session: Session name
+        limit: Maximum number of chats to return (default: 100)
+    """
+    return str(await api_call("GET", f"/{session}/chats", params={"limit": limit}))
 
 
 @mcp.tool()
@@ -173,21 +226,37 @@ async def get_messages(
     chat_id: str,
     limit: int = 100
 ) -> str:
-    """Get messages from a chat."""
-    return str(await api_call("GET", f"/sessions/{session}/chats/{chat_id}/messages", params={"limit": limit}))
+    """Get messages from a chat.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID
+        limit: Maximum messages to return (default: 100)
+    """
+    return str(await api_call("GET", f"/{session}/chats/{chat_id}/messages", params={"limit": limit}))
 
 
 @mcp.tool()
 async def delete_chat(session: str, chat_id: str) -> str:
-    """Delete a chat."""
-    return str(await api_call("DELETE", f"/sessions/{session}/chats/{chat_id}"))
+    """Delete a chat.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID to delete
+    """
+    return str(await api_call("DELETE", f"/{session}/chats/{chat_id}"))
 
 
 @mcp.tool()
 async def archive_chat(session: str, chat_id: str) -> str:
-    """Archive a chat."""
-    data = {"chatId": chat_id, "archive": True}
-    return str(await api_call("PUT", f"/sessions/{session}/chats/{chat_id}/archive", json=data))
+    """Archive a chat.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID to archive
+    """
+    data = {"archive": True}
+    return str(await api_call("PUT", f"/{session}/chats/{chat_id}/archive", json=data))
 
 
 # ============================================================================
@@ -206,19 +275,28 @@ async def create_group(session: str, name: str, participants: str) -> str:
     participant_list = [f"{p.strip()}@c.us" if "@" not in p else p.strip()
                        for p in participants.split(",")]
     data = {"name": name, "participants": participant_list}
-    return str(await api_call("POST", f"/sessions/{session}/groups", json=data))
+    return str(await api_call("POST", f"/{session}/groups", json=data))
 
 
 @mcp.tool()
 async def list_groups(session: str) -> str:
-    """List all groups."""
-    return str(await api_call("GET", f"/sessions/{session}/groups"))
+    """List all groups.
+
+    Args:
+        session: Session name
+    """
+    return str(await api_call("GET", f"/{session}/groups"))
 
 
 @mcp.tool()
 async def get_group(session: str, group_id: str) -> str:
-    """Get group information."""
-    return str(await api_call("GET", f"/sessions/{session}/groups/{group_id}"))
+    """Get group information.
+
+    Args:
+        session: Session name
+        group_id: Group ID
+    """
+    return str(await api_call("GET", f"/{session}/groups/{group_id}"))
 
 
 @mcp.tool()
@@ -226,12 +304,14 @@ async def add_participants(session: str, group_id: str, participants: str) -> st
     """Add participants to a group.
 
     Args:
+        session: Session name
+        group_id: Group ID
         participants: Comma-separated phone numbers
     """
     participant_list = [f"{p.strip()}@c.us" if "@" not in p else p.strip()
                        for p in participants.split(",")]
     data = {"participants": participant_list}
-    return str(await api_call("POST", f"/sessions/{session}/groups/{group_id}/participants", json=data))
+    return str(await api_call("POST", f"/{session}/groups/{group_id}/participants", json=data))
 
 
 @mcp.tool()
@@ -239,12 +319,14 @@ async def remove_participants(session: str, group_id: str, participants: str) ->
     """Remove participants from a group.
 
     Args:
+        session: Session name
+        group_id: Group ID
         participants: Comma-separated phone numbers
     """
     participant_list = [f"{p.strip()}@c.us" if "@" not in p else p.strip()
                        for p in participants.split(",")]
     data = {"participants": participant_list}
-    return str(await api_call("DELETE", f"/sessions/{session}/groups/{group_id}/participants", json=data))
+    return str(await api_call("DELETE", f"/{session}/groups/{group_id}/participants", json=data))
 
 
 # ============================================================================
@@ -253,21 +335,35 @@ async def remove_participants(session: str, group_id: str, participants: str) ->
 
 @mcp.tool()
 async def list_contacts(session: str) -> str:
-    """List all contacts."""
-    return str(await api_call("GET", f"/sessions/{session}/contacts"))
+    """List all contacts.
+
+    Args:
+        session: Session name
+    """
+    return str(await api_call("GET", f"/{session}/contacts"))
 
 
 @mcp.tool()
 async def get_contact(session: str, contact_id: str) -> str:
-    """Get contact information."""
-    return str(await api_call("GET", f"/sessions/{session}/contacts/{contact_id}"))
+    """Get contact information.
+
+    Args:
+        session: Session name
+        contact_id: Contact ID
+    """
+    return str(await api_call("GET", f"/{session}/contacts/{contact_id}"))
 
 
 @mcp.tool()
 async def check_number(session: str, phone: str) -> str:
-    """Check if a phone number exists on WhatsApp."""
-    data = {"phone": phone}
-    return str(await api_call("POST", f"/sessions/{session}/contacts/check", json=data))
+    """Check if a phone number exists on WhatsApp.
+
+    Args:
+        session: Session name
+        phone: Phone number to check
+    """
+    data = {"session": session, "phone": phone}
+    return str(await api_call("POST", "/checkNumberStatus", json=data))
 
 
 # ============================================================================
@@ -276,16 +372,27 @@ async def check_number(session: str, phone: str) -> str:
 
 @mcp.tool()
 async def set_presence(session: str, online: bool) -> str:
-    """Set presence status (online/offline)."""
+    """Set presence status (online/offline).
+
+    Args:
+        session: Session name
+        online: True for online, False for offline
+    """
     data = {"presence": "online" if online else "offline"}
-    return str(await api_call("POST", f"/sessions/{session}/presence", json=data))
+    return str(await api_call("POST", f"/{session}/presence", json=data))
 
 
 @mcp.tool()
 async def set_typing(session: str, chat_id: str, typing: bool) -> str:
-    """Set typing indicator in a chat."""
+    """Set typing indicator in a chat.
+
+    Args:
+        session: Session name
+        chat_id: Chat ID
+        typing: True to show typing, False to hide
+    """
     data = {"chatId": chat_id, "typing": typing}
-    return str(await api_call("POST", f"/sessions/{session}/typing", json=data))
+    return str(await api_call("POST", f"/{session}/typing", json=data))
 
 
 # ============================================================================
